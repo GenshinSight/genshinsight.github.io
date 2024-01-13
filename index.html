@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -12,6 +13,7 @@
             gap: 10px;
             margin-top: 20px;
         }
+
         .characterCard {
             text-align: center;
             border: 1px solid #ccc;
@@ -20,6 +22,7 @@
         }
     </style>
 </head>
+
 <body>
 
     <h1>Genshin Character Information</h1>
@@ -31,30 +34,73 @@
         const characterSelectElement = document.getElementById('characterSelect');
         const characterInfoElement = document.getElementById('characterInfo');
 
+        async function fetchImage(url) {
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    return url;
+                }
+                throw new Error(`Error fetching ${url}`);
+            } catch (error) {
+                console.error(`Error fetching ${url}:`, error);
+                return null;
+            }
+        }
+
         async function getCharacterIconUrl(characterName) {
             const iconUrl = `https://genshin.jmp.blue/characters/${characterName}/icon.png`;
             const fallbackUrl = `https://genshin.jmp.blue/characters/${characterName}/icon-big.png`;
 
-            try {
-                const response = await fetch(iconUrl);
-                if (response.ok) {
-                    return iconUrl;
-                }
-                throw new Error(`Error fetching ${iconUrl}`);
-            } catch (error) {
-                console.error(`Error fetching ${iconUrl}:`, error);
-            }
+            const imageUrl = await fetchImage(iconUrl) || await fetchImage(fallbackUrl) || 'https://example.com/default-icon.png';
+            return imageUrl;
+        }
 
+        async function fetchData(url) {
             try {
-                const fallbackResponse = await fetch(fallbackUrl);
-                if (fallbackResponse.ok) {
-                    return fallbackUrl;
+                const response = await fetch(url);
+                if (response.ok) {
+                    return response.json();
                 }
-                throw new Error(`Error fetching fallback ${fallbackUrl}`);
-            } catch (fallbackError) {
-                console.error(`Error fetching fallback ${fallbackUrl}:`, fallbackError);
-                console.error(`No image found for ${characterName}`);
-                return 'https://example.com/default-icon.png';
+                throw new Error(`Error fetching data from ${url}`);
+            } catch (error) {
+                console.error(`Error fetching data from ${url}:`, error);
+                return null;
+            }
+        }
+
+        async function showCharacterInfo(characterName) {
+            const characterUrl = `https://genshin.jmp.blue/characters/${characterName}`;
+
+            const characterInfo = await fetchData(characterUrl);
+
+            if (characterInfo) {
+                characterInfoElement.innerHTML = `<h2>${characterInfo.name}</h2>
+                                                <p>Title: ${characterInfo.title}</p>
+                                                <p>Vision: ${characterInfo.vision}</p>
+                                                <p>Weapon: ${characterInfo.weapon}</p>`;
+
+                // Display skill talents
+                characterInfoElement.innerHTML += '<h3>Skill Talents</h3>';
+                characterInfo.skillTalents.forEach(skill => {
+                    characterInfoElement.innerHTML += `<p>${skill.name} (${skill.type})</p>
+                                                    <p>${skill.description}</p>`;
+                    // Display skill upgrades
+                    skill.upgrades.forEach(upgrade => {
+                        characterInfoElement.innerHTML += `<p>${upgrade.name}: ${upgrade.value}</p>`;
+                    });
+                });
+
+                // Display passive talents
+                characterInfoElement.innerHTML += '<h3>Passive Talents</h3>';
+                characterInfo.passiveTalents.forEach(talent => {
+                    characterInfoElement.innerHTML += `<p>${talent.name} (Level ${talent.level}): ${talent.description}</p>`;
+                });
+
+                // Display constellations
+                characterInfoElement.innerHTML += '<h3>Constellations</h3>';
+                characterInfo.constellations.forEach(constellation => {
+                    characterInfoElement.innerHTML += `<p>${constellation.name} (Level ${constellation.level}): ${constellation.description}</p>`;
+                });
             }
         }
 
@@ -63,70 +109,25 @@
             .then(response => response.json())
             .then(characterNames => {
                 // Handle the character names
-                console.log(characterNames);
-
-                // Display character select menu
-                characterNames.forEach(characterName => {
+                characterNames.forEach(async characterName => {
                     const characterCard = document.createElement('div');
                     characterCard.className = 'characterCard';
-                    getCharacterIconUrl(characterName)
-                        .then(iconUrl => {
-                            characterCard.innerHTML = `
-                                <img src="${iconUrl}" alt="${characterName}" width="50" height="50">
-                                <p>${characterName}</p>
-                            `;
-                            characterCard.addEventListener('click', () => showCharacterInfo(characterName));
-                            characterSelectElement.appendChild(characterCard);
-                        })
-                        .catch(error => console.error(error));
+
+                    const iconUrl = await getCharacterIconUrl(characterName);
+                    if (iconUrl) {
+                        characterCard.innerHTML = `<img src="${iconUrl}" alt="${characterName}" width="50" height="50">
+                                                  <p>${characterName}</p>`;
+                        characterCard.addEventListener('click', () => showCharacterInfo(characterName));
+                        characterSelectElement.appendChild(characterCard);
+                    }
                 });
             })
             .catch(error => {
                 // Handle errors for the initial character list request
                 console.error('Error fetching character names:', error);
             });
-
-        function showCharacterInfo(characterName) {
-            // Make a GET request to the specific character URL
-            fetch(`https://genshin.jmp.blue/characters/${characterName}`)
-                .then(response => response.json())
-                .then(characterInfo => {
-                    // Display character information
-                    characterInfoElement.innerHTML = `<h2>${characterInfo.name}</h2>`;
-                    characterInfoElement.innerHTML += `<p>Title: ${characterInfo.title}</p>`;
-                    characterInfoElement.innerHTML += `<p>Vision: ${characterInfo.vision}</p>`;
-                    characterInfoElement.innerHTML += `<p>Weapon: ${characterInfo.weapon}</p>`;
-                    // Add more properties as needed
-
-                    // Display skill talents
-                    characterInfoElement.innerHTML += '<h3>Skill Talents</h3>';
-                    characterInfo.skillTalents.forEach(skill => {
-                        characterInfoElement.innerHTML += `<p>${skill.name} (${skill.type})</p>`;
-                        characterInfoElement.innerHTML += `<p>${skill.description}</p>`;
-                        // Display skill upgrades
-                        skill.upgrades.forEach(upgrade => {
-                            characterInfoElement.innerHTML += `<p>${upgrade.name}: ${upgrade.value}</p>`;
-                        });
-                    });
-
-                    // Display passive talents
-                    characterInfoElement.innerHTML += '<h3>Passive Talents</h3>';
-                    characterInfo.passiveTalents.forEach(talent => {
-                        characterInfoElement.innerHTML += `<p>${talent.name} (Level ${talent.level}): ${talent.description}</p>`;
-                    });
-
-                    // Display constellations
-                    characterInfoElement.innerHTML += '<h3>Constellations</h3>';
-                    characterInfo.constellations.forEach(constellation => {
-                        characterInfoElement.innerHTML += `<p>${constellation.name} (Level ${constellation.level}): ${constellation.description}</p>`;
-                    });
-                })
-                .catch(error => {
-                    // Handle errors for individual character requests
-                    console.error(`Error fetching data for ${characterName}:`, error);
-                });
-        }
     </script>
 
 </body>
+
 </html>
