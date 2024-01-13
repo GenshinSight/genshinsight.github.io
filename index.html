@@ -1,1 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Genshin Character Information</title>
+    <style>
+        #characterSelect {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .characterCard {
+            text-align: center;
+            border: 1px solid #ccc;
+            padding: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
 
+    <h1>Genshin Character Information</h1>
+
+    <div id="characterSelect"></div>
+    <div id="characterInfo"></div>
+
+    <script>
+        const characterSelectElement = document.getElementById('characterSelect');
+        const characterInfoElement = document.getElementById('characterInfo');
+
+        async function getCharacterIconUrl(characterName) {
+            const iconUrl = `https://genshin.jmp.blue/characters/${characterName}/icon.png`;
+            const fallbackUrl = `https://genshin.jmp.blue/characters/${characterName}/icon-big.png`;
+
+            try {
+                const response = await fetch(iconUrl);
+                if (response.ok) {
+                    return iconUrl;
+                }
+                throw new Error(`Error fetching ${iconUrl}`);
+            } catch (error) {
+                console.error(`Error fetching ${iconUrl}:`, error);
+            }
+
+            try {
+                const fallbackResponse = await fetch(fallbackUrl);
+                if (fallbackResponse.ok) {
+                    return fallbackUrl;
+                }
+                throw new Error(`Error fetching fallback ${fallbackUrl}`);
+            } catch (fallbackError) {
+                console.error(`Error fetching fallback ${fallbackUrl}:`, fallbackError);
+                console.error(`No image found for ${characterName}`);
+                return 'https://example.com/default-icon.png';
+            }
+        }
+
+        // Make a GET request to the Genshin Characters API to get the list of characters
+        fetch('https://genshin.jmp.blue/characters/')
+            .then(response => response.json())
+            .then(characterNames => {
+                // Handle the character names
+                console.log(characterNames);
+
+                // Display character select menu
+                characterNames.forEach(characterName => {
+                    const characterCard = document.createElement('div');
+                    characterCard.className = 'characterCard';
+                    getCharacterIconUrl(characterName)
+                        .then(iconUrl => {
+                            characterCard.innerHTML = `
+                                <img src="${iconUrl}" alt="${characterName}" width="50" height="50">
+                                <p>${characterName}</p>
+                            `;
+                            characterCard.addEventListener('click', () => showCharacterInfo(characterName));
+                            characterSelectElement.appendChild(characterCard);
+                        })
+                        .catch(error => console.error(error));
+                });
+            })
+            .catch(error => {
+                // Handle errors for the initial character list request
+                console.error('Error fetching character names:', error);
+            });
+
+        function showCharacterInfo(characterName) {
+            // Make a GET request to the specific character URL
+            fetch(`https://genshin.jmp.blue/characters/${characterName}`)
+                .then(response => response.json())
+                .then(characterInfo => {
+                    // Display character information
+                    characterInfoElement.innerHTML = `<h2>${characterInfo.name}</h2>`;
+                    characterInfoElement.innerHTML += `<p>Title: ${characterInfo.title}</p>`;
+                    characterInfoElement.innerHTML += `<p>Vision: ${characterInfo.vision}</p>`;
+                    characterInfoElement.innerHTML += `<p>Weapon: ${characterInfo.weapon}</p>`;
+                    // Add more properties as needed
+
+                    // Display skill talents
+                    characterInfoElement.innerHTML += '<h3>Skill Talents</h3>';
+                    characterInfo.skillTalents.forEach(skill => {
+                        characterInfoElement.innerHTML += `<p>${skill.name} (${skill.type})</p>`;
+                        characterInfoElement.innerHTML += `<p>${skill.description}</p>`;
+                        // Display skill upgrades
+                        skill.upgrades.forEach(upgrade => {
+                            characterInfoElement.innerHTML += `<p>${upgrade.name}: ${upgrade.value}</p>`;
+                        });
+                    });
+
+                    // Display passive talents
+                    characterInfoElement.innerHTML += '<h3>Passive Talents</h3>';
+                    characterInfo.passiveTalents.forEach(talent => {
+                        characterInfoElement.innerHTML += `<p>${talent.name} (Level ${talent.level}): ${talent.description}</p>`;
+                    });
+
+                    // Display constellations
+                    characterInfoElement.innerHTML += '<h3>Constellations</h3>';
+                    characterInfo.constellations.forEach(constellation => {
+                        characterInfoElement.innerHTML += `<p>${constellation.name} (Level ${constellation.level}): ${constellation.description}</p>`;
+                    });
+                })
+                .catch(error => {
+                    // Handle errors for individual character requests
+                    console.error(`Error fetching data for ${characterName}:`, error);
+                });
+        }
+    </script>
+
+</body>
+</html>
